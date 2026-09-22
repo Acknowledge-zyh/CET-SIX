@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>六级单词复习</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <h1>📘 六级单词复习</h1>
+    <p class="sub">每天学一点，考试不慌张</p>
+  </header>
+
+  <!-- 两个板块：标签页切换 -->
+  <nav class="tabs" role="tablist">
+    <button class="tab active" id="tab-new" data-target="section-new">📖 新单词学习</button>
+    <button class="tab" id="tab-review" data-target="section-review">🔁 昨日单词复习</button>
+  </nav>
+
+  <main>
+    <!-- 板块一：新单词学习 -->
+    <section id="section-new" class="panel active">
+      <p class="hint">点击「学会了」把单词记入学习记录；它明天会出现在「昨日单词复习」里。</p>
+      <ul id="new-word-list" class="word-list"><!-- 由 app.js 渲染 --></ul>
+    </section>
+
+    <!-- 板块二：昨日学习单词复习 -->
+    <section id="section-review" class="panel">
+      <p class="hint">这里显示你<strong>昨天</strong>学过的单词。点击「想起来了」完成复习。</p>
+      <ul id="review-word-list" class="word-list"><!-- 由 app.js 渲染 --></ul>
+      <p id="review-empty" class="empty" hidden>🌙 昨天没有学习记录。去「新单词学习」学几个，明天它们就会出现在这里。</p>
+    </section>
+  </main>
+
+  <footer class="statusbar">
+    <span id="stats">共 0 词 · 已学 0 · 待复习 0</span>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>

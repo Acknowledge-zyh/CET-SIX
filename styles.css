@@ -1,0 +1,111 @@
+/* 六级单词复习 v0 样式 —— 清淡风格，零基础友好 */
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: "Microsoft YaHei", "PingFang SC", sans-serif;
+  background: #f5f7fa;
+  color: #2c3e50;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* 顶栏 */
+.topbar {
+  background: #4a6fa5;
+  color: #fff;
+  padding: 20px 16px 14px;
+  text-align: center;
+}
+.topbar h1 { font-size: 22px; }
+.topbar .sub { font-size: 13px; opacity: .85; margin-top: 4px; }
+
+/* 标签页 */
+.tabs {
+  display: flex;
+  background: #fff;
+  border-bottom: 2px solid #e3e8ef;
+}
+.tab {
+  flex: 1;
+  padding: 13px 8px;
+  border: none;
+  background: none;
+  font-size: 15px;
+  color: #7a8aa0;
+  cursor: pointer;
+  border-bottom: 3px solid transparent;
+}
+.tab.active {
+  color: #4a6fa5;
+  font-weight: bold;
+  border-bottom-color: #4a6fa5;
+  background: #f0f4fa;
+}
+
+/* 内容区 */
+main { flex: 1; padding: 16px; max-width: 640px; width: 100%; margin: 0 auto; }
+.panel { display: none; }
+.panel.active { display: block; }
+
+.hint { font-size: 13px; color: #8a97a8; margin-bottom: 12px; line-height: 1.6; }
+
+/* 单词卡片 */
+.word-list { list-style: none; }
+.word-item {
+  background: #fff;
+  border-radius: 10px;
+  padding: 14px;
+  margin-bottom: 10px;
+  box-shadow: 0 1px 3px rgba(0,0,0,.06);
+}
+.word-item .word {
+  font-size: 18px;
+  font-weight: bold;
+  color: #2c3e50;
+}
+.word-item .phonetic { font-size: 13px; color: #9aa7b8; margin-left: 8px; }
+.word-item .meaning { font-size: 14px; color: #5a6a7d; margin-top: 6px; line-height: 1.5; }
+
+/* 按钮 */
+.btn {
+  border: none;
+  border-radius: 8px;
+  padding: 8px 14px;
+  font-size: 13px;
+  cursor: pointer;
+  margin-top: 10px;
+  margin-right: 8px;
+}
+.btn-learn { background: #4a6fa5; color: #fff; }
+.btn-review { background: #3aa675; color: #fff; }
+.btn:disabled { background: #c5cdd8; cursor: not-allowed; }
+
+/* 已学/已复习标记 */
+.done-tag {
+  display: inline-block;
+  font-size: 12px;
+  color: #3aa675;
+  background: #e8f6ef;
+  border-radius: 6px;
+  padding: 3px 8px;
+  margin-top: 10px;
+}
+
+.empty { text-align: center; color: #9aa7b8; padding: 40px 0; font-size: 14px; }
+
+/* 底部状态栏 */
+.statusbar {
+  text-align: center;
+  font-size: 12px;
+  color: #9aa7b8;
+  padding: 12px;
+  background: #fff;
+  border-top: 1px solid #e3e8ef;
+}
+
+/* 手机适配：窄屏字号略收 */
+@media (max-width: 480px) {
+  .topbar h1 { font-size: 19px; }
+  .word-item .word { font-size: 16px; }
+}
