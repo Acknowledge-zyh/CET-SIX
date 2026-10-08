@@ -1,111 +1,260 @@
-/* 六级单词复习 v0 样式 —— 清淡风格，零基础友好 */
+/* 「六级单词复习」主视图样式 ｜ 按 PRD.md 5.2 生成
+   视觉基调：清淡底色 + 单一靛蓝主色 + 绿色表示"已完成"；卡片留白充足，桌面一屏可见 5–6 张词卡
+   布局：桌面区块②③ 左右并排（1fr + 300px），手机（≤860px）纵向堆叠、不横向溢出 */
+
+:root {
+  --bg: #f5f7fa;
+  --card: #ffffff;
+  --ink: #2c3e50;
+  --ink-2: #7a8aa0;
+  --line: #e3e8ef;
+  --brand: #4a6fa5;       /* 主色：靛蓝（沿用 v0，保持视觉一致） */
+  --brand-soft: #eef3fa;
+  --brand-ink: #3d5d8c;   /* 选中态文字：淡蓝底上 5.92:1（DR-1 要 4.5:1） */
+  --line-strong: #7d8ea3; /* 交互控件描边：白底 3.35:1（DR-2 要 3:1），原来的 --line 只有 1.2:1 */
+  --done: #2f9e6e;        /* 完成态：绿 */
+  --done-soft: #e8f6ef;
+  --radius: 12px;
+}
+
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
+.hidden { display: none !important; }   /* 复习卡先藏释义、已复习标记等都用它 */
+
 body {
-  font-family: "Microsoft YaHei", "PingFang SC", sans-serif;
-  background: #f5f7fa;
-  color: #2c3e50;
+  font-family: "Microsoft YaHei", "PingFang SC", system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--ink);
   min-height: 100vh;
-  display: flex;
-  flex-direction: column;
 }
 
-/* 顶栏 */
+/* ---------- 区块① 顶栏 ---------- */
 .topbar {
-  background: #4a6fa5;
-  color: #fff;
-  padding: 20px 16px 14px;
-  text-align: center;
+  position: sticky; top: 0; z-index: 10;
+  display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+  padding: 14px 22px;
+  background: var(--card);
+  border-bottom: 1px solid var(--line);
 }
-.topbar h1 { font-size: 22px; }
-.topbar .sub { font-size: 13px; opacity: .85; margin-top: 4px; }
+.brand-title { font-size: 20px; letter-spacing: .5px; }
+.brand-sub { font-size: 12px; color: var(--ink-2); margin-top: 2px; }
+.topbar-progress { margin-left: auto; min-width: 190px; }
+.progress-text { font-size: 13px; color: var(--ink-2); }
+.progress-text strong { color: var(--brand); font-size: 15px; }
+.progress-track {
+  margin-top: 6px; height: 8px; border-radius: 999px;
+  background: #e9edf3; overflow: hidden;
+}
+.progress-bar {
+  height: 100%; width: 0; border-radius: 999px;
+  background: var(--brand);
+  transition: width .25s ease;
+}
 
-/* 标签页 */
+/* ---------- 主体布局：桌面左右并排 ---------- */
+.layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 300px;   /* minmax(0,1fr) 防止长内容撑破 */
+  gap: 20px;
+  align-items: start;
+  max-width: 1040px;
+  margin: 0 auto;
+  padding: 20px 22px 40px;
+}
+
+/* ---------- 区块② 学习区 ---------- */
+.panel-main { min-width: 0; }
 .tabs {
-  display: flex;
-  background: #fff;
-  border-bottom: 2px solid #e3e8ef;
+  display: flex; gap: 6px;
+  background: var(--card); border: 1px solid var(--line);
+  border-radius: var(--radius); padding: 5px;
 }
 .tab {
-  flex: 1;
-  padding: 13px 8px;
-  border: none;
-  background: none;
-  font-size: 15px;
-  color: #7a8aa0;
+  flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px;
+  min-height: 40px; padding: 8px 10px;      /* 点击区 ≥40px（PRD 5.2） */
+  border: none; border-radius: 9px; background: none;
+  font-family: inherit; font-size: 14px; color: var(--ink-2);
   cursor: pointer;
-  border-bottom: 3px solid transparent;
 }
-.tab.active {
-  color: #4a6fa5;
-  font-weight: bold;
-  border-bottom-color: #4a6fa5;
-  background: #f0f4fa;
+.tab:hover { background: #f4f6fa; }
+.tab.active { background: var(--brand-soft); color: var(--brand); font-weight: 700; }
+.tab-badge {
+  min-width: 20px; padding: 1px 6px; border-radius: 999px;
+  background: #e9edf3; color: var(--ink-2);
+  font-size: 12px; font-weight: 700; line-height: 16px;
+}
+.tab.active .tab-badge { background: var(--brand); color: #fff; }
+.tab:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }   /* 键盘轮廓（DR-3） */
+
+/* ---------- 面包屑 + 返回上一页（Day 13）---------- */
+.crumbs {
+  display: flex; align-items: center; flex-wrap: wrap; gap: 10px;
+  margin: 10px 2px 0;
+}
+.btn-back { min-height: 40px; padding: 8px 14px; font-size: 13px; }
+.btn-back:disabled { opacity: .5; cursor: default; }
+.btn-back:disabled:hover { background: #eef1f6; }   /* 禁用态不给出"可点"的悬停反馈 */
+.crumb-trail { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--ink-2); }
+.crumb-sep { color: var(--ink-2); }
+.crumb-current { color: var(--ink); font-weight: 700; }
+
+.hint { font-size: 13px; color: var(--ink-2); line-height: 1.6; margin: 12px 2px; }
+
+/* ---------- 状态筛选（数据对象=词卡，筛选条件=学习状态）---------- */
+.filter-bar {
+  display: flex; align-items: center; flex-wrap: wrap; gap: 8px;
+  margin: 0 2px 12px;
+}
+.filter-bar[hidden] { display: none; }   /* 「学习记录」视图没有可筛数据，整条隐藏 */
+.filter-label { font-size: 13px; color: var(--ink-2); white-space: nowrap; }
+.chip-group { display: flex; flex-wrap: wrap; gap: 8px; }
+/* 注意：侧栏「已学单词」的 .chip 是纯展示标签，筛选按钮单独用 .status-chip，勿混用 */
+.status-chip {
+  min-height: 40px; padding: 8px 14px;      /* 点击区 ≥40px（PRD 5.2 / DR-7） */
+  border: 1px solid var(--line-strong);     /* 描边 3.35:1（DR-2） */
+  border-radius: 9px;                       /* 与按钮同级圆角（DR-8） */
+  background: var(--card);
+  font-family: inherit; font-size: 14px; color: var(--ink);
+  cursor: pointer;
+}
+.status-chip:hover { background: #f4f6fa; }
+.status-chip:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }   /* 键盘轮廓（DR-3） */
+.status-chip[aria-pressed="true"] {         /* 选中态三通道：描边 + 底色 + 字重，不只靠颜色 */
+  border-color: var(--brand); background: var(--brand-soft);
+  color: var(--brand-ink); font-weight: 700;
+}
+.filter-count {
+  font-size: 12px; color: var(--ink-2); white-space: nowrap;
+  font-variant-numeric: tabular-nums;       /* DR-12 等宽数字 */
 }
 
-/* 内容区 */
-main { flex: 1; padding: 16px; max-width: 640px; width: 100%; margin: 0 auto; }
-.panel { display: none; }
-.panel.active { display: block; }
-
-.hint { font-size: 13px; color: #8a97a8; margin-bottom: 12px; line-height: 1.6; }
-
-/* 单词卡片 */
-.word-list { list-style: none; }
-.word-item {
-  background: #fff;
-  border-radius: 10px;
-  padding: 14px;
-  margin-bottom: 10px;
-  box-shadow: 0 1px 3px rgba(0,0,0,.06);
+/* ---------- 词卡 ---------- */
+.card-list { list-style: none; display: flex; flex-direction: column; gap: 10px; }
+.card {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 14px 16px;
 }
-.word-item .word {
-  font-size: 18px;
-  font-weight: bold;
-  color: #2c3e50;
-}
-.word-item .phonetic { font-size: 13px; color: #9aa7b8; margin-left: 8px; }
-.word-item .meaning { font-size: 14px; color: #5a6a7d; margin-top: 6px; line-height: 1.5; }
+.card.done { background: #fbfdfc; border-color: #d8ece2; }
+.card-head { display: flex; align-items: baseline; flex-wrap: wrap; gap: 8px; }
+.card-word { font-size: 20px; font-weight: 700; overflow-wrap: anywhere; }
+.card-phonetic { font-size: 13px; color: var(--ink-2); }
+.card-meaning { font-size: 14px; color: #5a6a7d; line-height: 1.55; margin-top: 8px; }
+.card-foot { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 12px; }
+.card-foot .btn { margin-top: 0; }
 
 /* 按钮 */
 .btn {
-  border: none;
-  border-radius: 8px;
-  padding: 8px 14px;
-  font-size: 13px;
+  min-height: 40px; padding: 9px 16px;      /* 点击区 ≥40px */
+  border: none; border-radius: 9px; font-family: inherit; font-size: 14px;
   cursor: pointer;
-  margin-top: 10px;
-  margin-right: 8px;
 }
-.btn-learn { background: #4a6fa5; color: #fff; }
-.btn-review { background: #3aa675; color: #fff; }
-.btn:disabled { background: #c5cdd8; cursor: not-allowed; }
+.btn-learn { background: var(--brand); color: #fff; }
+.btn-learn:hover { background: #3d5d8c; }
+.btn-reveal { background: var(--done); color: #fff; }
+.btn-reveal:hover { background: #27855b; }
+.btn-ghost { background: #eef1f6; color: var(--ink); }
+.btn-ghost:hover { background: #e3e8f0; }
 
-/* 已学/已复习标记 */
-.done-tag {
-  display: inline-block;
-  font-size: 12px;
-  color: #3aa675;
-  background: #e8f6ef;
-  border-radius: 6px;
-  padding: 3px 8px;
-  margin-top: 10px;
+/* 已学 / 已复习标记 */
+.tag-done {
+  display: inline-block; padding: 5px 10px; border-radius: 8px;
+  background: var(--done-soft); color: var(--done);
+  font-size: 13px; font-weight: 700;
 }
 
-.empty { text-align: center; color: #9aa7b8; padding: 40px 0; font-size: 14px; }
-
-/* 底部状态栏 */
-.statusbar {
+/* ---------- 四种状态 ---------- */
+.state-block {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
   text-align: center;
-  font-size: 12px;
-  color: #9aa7b8;
-  padding: 12px;
-  background: #fff;
-  border-top: 1px solid #e3e8ef;
+  padding: 46px 20px;
+}
+.state-icon { font-size: 36px; line-height: 1; margin-bottom: 12px; }
+.state-text { font-size: 16px; font-weight: 700; margin-bottom: 6px; }
+.state-sub { font-size: 13px; color: var(--ink-2); line-height: 1.6; margin-bottom: 18px; }
+.state-error { border-color: #f0d9d9; background: #fffdfd; }
+
+/* 加载中：骨架屏 */
+.skeleton-list { display: flex; flex-direction: column; gap: 10px; margin-top: 14px; text-align: left; }
+.skeleton {
+  height: 92px; border-radius: var(--radius);
+  background: linear-gradient(90deg, #eef1f5 25%, #e2e7ee 37%, #eef1f5 63%);
+  background-size: 400% 100%;
+  animation: skeleton-breath 1.4s ease infinite;
+}
+@keyframes skeleton-breath {
+  0%   { background-position: 100% 50%; }
+  100% { background-position: 0 50%; }
 }
 
-/* 手机适配：窄屏字号略收 */
-@media (max-width: 480px) {
-  .topbar h1 { font-size: 19px; }
-  .word-item .word { font-size: 16px; }
+/* ---------- 视图③ 学习记录（Day 13）---------- */
+.records { display: flex; flex-direction: column; gap: 14px; }
+.record-summary {
+  display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px;
+}
+.record-cell {
+  background: var(--card); border: 1px solid var(--line); border-radius: var(--radius);
+  padding: 12px 14px; display: flex; flex-direction: column; gap: 4px;
+}
+.record-cell-label { font-size: 12px; color: var(--ink-2); }
+.record-cell-value { font-size: 18px; font-variant-numeric: tabular-nums; }
+.record-list { list-style: none; display: flex; flex-direction: column; gap: 10px; }
+.record-day {
+  background: var(--card); border: 1px solid var(--line); border-radius: var(--radius);
+  padding: 14px 16px;
+}
+.record-head {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 10px;
+  flex-wrap: wrap; margin-bottom: 10px;
+}
+.record-date { font-size: 15px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.record-meta { font-size: 12px; color: var(--ink-2); }
+.record-words { list-style: none; display: flex; flex-wrap: wrap; gap: 6px; }
+
+/* ---------- 区块③ 侧栏 ---------- */
+.panel-side { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.side-card {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+}
+.side-title {
+  font-size: 14px; font-weight: 700; margin-bottom: 10px;
+  padding-left: 9px; border-left: 3px solid var(--brand); line-height: 1.2;
+}
+.stat-row {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 10px;
+  font-size: 13px; color: var(--ink-2);
+  padding: 7px 0; border-bottom: 1px dashed var(--line);
+}
+.stat-row:last-of-type { border-bottom: none; }
+.stat-row strong { font-size: 16px; color: var(--ink); font-variant-numeric: tabular-nums; }
+.side-hint { font-size: 12px; color: var(--ink-2); line-height: 1.6; margin-top: 10px; }
+
+.chip-list { list-style: none; display: flex; flex-wrap: wrap; gap: 6px; }
+.chip {
+  font-size: 12px; padding: 4px 9px; border-radius: 999px;
+  background: var(--brand-soft); color: var(--brand);
+}
+.chip-empty { font-size: 13px; color: var(--ink-2); }
+
+/* ---------- 手机宽度（≥360px 也要正常，PRD 5.2 / B5）----------
+   只做一件事：把两列改成单列纵向堆叠，其余尺寸整体收紧 */
+@media (max-width: 860px) {
+  .topbar { padding: 12px 14px; gap: 10px; }
+  .brand-title { font-size: 18px; }
+  .topbar-progress { margin-left: 0; width: 100%; }
+
+  .layout { grid-template-columns: minmax(0, 1fr); gap: 14px; padding: 14px 14px 32px; }
+
+  .tab { font-size: 13px; padding: 8px 6px; }
+  .status-chip { padding: 8px 12px; font-size: 13px; }   /* 窄屏收紧，仍保持 40px 点击区 */
+  .card { padding: 13px 14px; }
+  .card-word { font-size: 18px; }
+  .state-block { padding: 38px 16px; }
+  .record-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }   /* 窄屏两列，不挤成一条 */
 }

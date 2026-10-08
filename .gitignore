@@ -17,3 +17,6 @@ data/local/
 # 系统与编辑器垃圾文件
 .DS_Store
 Thumbs.db
+
+# 打卡截图与本地留存（永不入库，惯例同 VibeCoding 项目）
+打卡/

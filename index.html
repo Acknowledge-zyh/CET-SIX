@@ -1,41 +1,100 @@
 <!DOCTYPE html>
+<!-- 「六级单词复习」主视图 ｜ 按 PRD.md 生成
+     区块① 顶栏：应用名 + 今日进度条
+     区块② 学习区：三个独立视图（新单词学习 / 昨日单词复习 / 学习记录）用 hash 路由切换
+               + 视图内状态筛选 + 词卡/记录列表
+     区块③ 侧栏：今日进度统计 + 已学单词速览
+     三级切换（Day 13）：L1 主视图导航 → L2 视图内筛选 → L3 卡片内展开释义
+     四种状态：加载中 / 成功 / 空 / 错误（只占区块②③，顶部与导航始终可见）
+     不做（PRD 3.2）：登录、云端同步、发音、推送、排行、付费 -->
 <html lang="zh-CN">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>六级单词复习</title>
-  <link rel="stylesheet" href="styles.css">
+  <meta name="description" content="打开就能开始背的六级单词网页：今天过新词、顺手复习昨天学过的，进度存在本机，不用登录。" />
+  <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
+  <!-- 区块① 顶栏：应用名 + 今日进度 -->
   <header class="topbar">
-    <h1>📘 六级单词复习</h1>
-    <p class="sub">每天学一点，考试不慌张</p>
+    <div class="brand">
+      <h1 class="brand-title">📘 六级单词复习</h1>
+      <p class="brand-sub">每天学一点，考试不慌张</p>
+    </div>
+    <div class="topbar-progress">
+      <span class="progress-text">今天已学 <strong id="progress-count">0 / 0</strong></span>
+      <div class="progress-track" role="progressbar" aria-label="今日学习进度">
+        <div class="progress-bar" id="progress-bar"></div>
+      </div>
+    </div>
   </header>
 
-  <!-- 两个板块：标签页切换 -->
-  <nav class="tabs" role="tablist">
-    <button class="tab active" id="tab-new" data-target="section-new">📖 新单词学习</button>
-    <button class="tab" id="tab-review" data-target="section-review">🔁 昨日单词复习</button>
-  </nav>
+  <!-- 桌面：区块②③ 左右并排；手机：区块② 在上、区块③ 在下 -->
+  <main class="layout">
+    <!-- 区块② 学习区 -->
+    <section class="panel-main" aria-label="学习区">
+      <!-- L1 视图导航（Day 13）：三个独立视图用 hash 路由切换
+           选 hash 路由的理由：零依赖、刷新后停在原视图、浏览器前进/后退天然可用（= 返回上一页）
+           键盘：左右方向键在标签间移动焦点（roving tabindex，见 app.js） -->
+      <nav class="tabs" role="tablist" aria-label="视图切换" id="view-tabs">
+        <button class="tab active" id="tab-learn" type="button" role="tab" aria-selected="true"
+                aria-controls="content" data-view="learn">
+          新单词学习<span class="tab-badge" id="badge-new">0</span>
+        </button>
+        <button class="tab" id="tab-review" type="button" role="tab" aria-selected="false"
+                aria-controls="content" data-view="review">
+          昨日单词复习<span class="tab-badge" id="badge-review">0</span>
+        </button>
+        <button class="tab" id="tab-records" type="button" role="tab" aria-selected="false"
+                aria-controls="content" data-view="records">
+          学习记录
+        </button>
+      </nav>
 
-  <main>
-    <!-- 板块一：新单词学习 -->
-    <section id="section-new" class="panel active">
-      <p class="hint">点击「学会了」把单词记入学习记录；它明天会出现在「昨日单词复习」里。</p>
-      <ul id="new-word-list" class="word-list"><!-- 由 app.js 渲染 --></ul>
+      <!-- 面包屑 + 返回上一页（Day 13 余力加练）：显示当前视图在整个应用里的位置 -->
+      <div class="crumbs">
+        <button class="btn btn-ghost btn-back" id="btn-back" type="button" disabled>← 返回</button>
+        <nav class="crumb-trail" aria-label="当前位置">
+          <span class="crumb">六级单词复习</span>
+          <span class="crumb-sep" aria-hidden="true">›</span>
+          <span class="crumb crumb-current" id="crumb-current" aria-current="page">新单词学习</span>
+        </nav>
+      </div>
+
+      <p class="hint" id="hint"></p>
+
+      <!-- 状态筛选（2026-10-08 新增）：数据对象 = 词卡，筛选条件 = 学习状态
+           结果规则：只显示符合所选状态的词卡；空结果给文案与出路；切视图自动回「全部」
+           「学习记录」视图没有列表数据可筛，进该视图时整条筛选栏隐藏 -->
+      <div class="filter-bar" id="status-filter">
+        <span class="filter-label" id="status-filter-label">学习状态</span>
+        <div class="chip-group" id="status-chips" role="group" aria-labelledby="status-filter-label"></div>
+        <button class="btn btn-ghost" id="status-clear" type="button" disabled>清除筛选</button>
+        <span class="filter-count" id="status-count" aria-live="polite"></span>
+      </div>
+
+      <!-- 四种状态与词卡列表都渲染在这里 -->
+      <div id="content"></div>
     </section>
 
-    <!-- 板块二：昨日学习单词复习 -->
-    <section id="section-review" class="panel">
-      <p class="hint">这里显示你<strong>昨天</strong>学过的单词。点击「想起来了」完成复习。</p>
-      <ul id="review-word-list" class="word-list"><!-- 由 app.js 渲染 --></ul>
-      <p id="review-empty" class="empty" hidden>🌙 昨天没有学习记录。去「新单词学习」学几个，明天它们就会出现在这里。</p>
-    </section>
+    <!-- 区块③ 侧栏：统计 + 已学速览 -->
+    <aside class="panel-side" aria-label="学习统计">
+      <section class="side-card">
+        <h2 class="side-title">今日进度</h2>
+        <div class="stat-row"><span>今天已学</span><strong id="stat-today">0 / 0</strong></div>
+        <div class="stat-row"><span>昨天学过的词</span><strong id="stat-yesterday">0</strong></div>
+        <div class="stat-row"><span>今天已复习</span><strong id="stat-reviewed">0</strong></div>
+        <div class="stat-row"><span>累计已学</span><strong id="stat-total">0</strong></div>
+        <p class="side-hint">记录仅保存在本机浏览器，清除浏览器数据会丢失。</p>
+      </section>
+
+      <section class="side-card">
+        <h2 class="side-title">已学单词</h2>
+        <ul class="chip-list" id="learned-chips"></ul>
+      </section>
+    </aside>
   </main>
-
-  <footer class="statusbar">
-    <span id="stats">共 0 词 · 已学 0 · 待复习 0</span>
-  </footer>
 
   <script src="app.js"></script>
 </body>

@@ -1,0 +1,18 @@
+{
+  "_note": "样本词库（v1，12 个六级高频词）。字段：word 单词 / phonetic 音标 / meaning 中文释义（含词性）。以后换成正式词库（≥300 词）时保持同样结构即可，页面代码不用改。",
+  "updated_at": "2026-09-23T12:10:00+08:00",
+  "words": [
+    { "word": "abandon",     "phonetic": "/əˈbændən/",     "meaning": "v. 放弃；抛弃" },
+    { "word": "abundant",    "phonetic": "/əˈbʌndənt/",    "meaning": "adj. 丰富的，充裕的" },
+    { "word": "accommodate", "phonetic": "/əˈkɒmədeɪt/",   "meaning": "v. 容纳；使适应" },
+    { "word": "acknowledge", "phonetic": "/əkˈnɒlɪdʒ/",    "meaning": "v. 承认；答谢" },
+    { "word": "adequate",    "phonetic": "/ˈædɪkwət/",     "meaning": "adj. 足够的，适当的" },
+    { "word": "alleviate",   "phonetic": "/əˈliːvieɪt/",   "meaning": "v. 减轻，缓解" },
+    { "word": "ambiguous",   "phonetic": "/æmˈbɪɡjuəs/",   "meaning": "adj. 模棱两可的，含糊的" },
+    { "word": "anticipate",  "phonetic": "/ænˈtɪsɪpeɪt/",  "meaning": "v. 预期，预料" },
+    { "word": "arbitrary",   "phonetic": "/ˈɑːbɪtrəri/",   "meaning": "adj. 任意的；武断的" },
+    { "word": "assess",      "phonetic": "/əˈses/",        "meaning": "v. 评估，评定" },
+    { "word": "compile",     "phonetic": "/kəmˈpaɪl/",     "meaning": "v. 编辑；汇编" },
+    { "word": "deteriorate", "phonetic": "/dɪˈtɪəriəreɪt/", "meaning": "v. 恶化，变坏" }
+  ]
+}
