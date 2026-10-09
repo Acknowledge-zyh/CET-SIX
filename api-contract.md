@@ -341,3 +341,4 @@ curl https://acknowledge-d9gnqrpy89f1f7d21.service.tcloudbase.com/cet6/api/healt
 | 日期 | 变更 |
 | --- | --- |
 | 2026-10-09 | 首版：登记 3 张表（`words` / `learn_records` / `review_records`）与 7 个接口（1 实现 + 6 占位）；因与环境内其它项目共用环境，路径统一加 `/cet6` 前缀 |
+| 2026-10-09（Day 16） | 三张表在 CloudBase PostgreSQL 建成（`db/schema.sql`），种子与 select 验证入库；外键与唯一约束实测生效；接口仍未实现，形状不变 |

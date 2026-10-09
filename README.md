@@ -24,6 +24,12 @@
 | `styles.css` | 样式：桌面左右并排、手机纵向堆叠 |
 | `app.js` | 逻辑：hash 路由、请求词库、渲染词卡与记录、四种状态、学习与复习记录 |
 | `data/words.json` | 词库（12 个六级高频词，换正式词库保持同结构即可） |
+| `db/schema.sql` | 建表 SQL：words / learn_records / review_records 三张表（字段注释、外键、唯一约束、索引，幂等可重复执行） |
+| `db/seed.sql` | 种子数据：12 个词 + 10 条学习记录 + 7 条复习记录（日期相对当天，重复执行结果一致） |
+| `db/verify.sql` | select 验证：每张核心表 select 出数据 + 业务口径自检（由 `scripts/db-snapshot.js` 逐条执行） |
+| `scripts/db-apply.js` | 把 db/*.sql 应用到 CloudBase PostgreSQL（SQL 不经 shell 拼串，避免转义问题） |
+| `scripts/db-snapshot.js` | 执行 verify.sql、打印结果，并生成 `打卡/db-snapshot.html` 取证页 |
+| `api-contract.md` | 接口契约（1 实现 + 6 占位）与三张表的字段约定 |
 
 ## 功能（v1）
 
@@ -134,3 +140,42 @@ tcb fn deploy cet6-health -e acknowledge-d9gnqrpy89f1f7d21 --path /cet6/api/heal
 
 全部接口（1 实现 + 6 占位）与三张表（`words` / `learn_records` / `review_records`）设计见 **`api-contract.md`** ——
 那是第 3 周建表与写接口的唯一依据。
+
+## 数据库（Day 16 建表）
+
+> 数据库是 CloudBase **PostgreSQL 17**（Day 7 建环境时选的就是 PG 类型）。
+> 表结构以 `api-contract.md` 第 1.5 节为唯一依据，落到 `db/schema.sql`。
+
+### 两张核心表存什么、靠哪个字段关联
+
+| 表 | 存什么 | 对应页面 / 本地存储 |
+| --- | --- | --- |
+| `learn_records` | 某个词**哪一天被标记学会了** | 「新单词学习」点「学会了」／`cet6_learned_v1` |
+| `review_records` | 某个词**哪一天被标记想起来了** | 「昨日单词复习」点「想起来了」／`cet6_reviewed_v1` |
+
+两张记录表**互相之间不直接关联**，各自通过 **`word` 字段**挂到词库上：
+`learn_records.word → words.word`、`review_records.word → words.word`（外键，删词级联删记录）。
+选 `word` 而不是自增数字做外键：单词是天然唯一的业务标识，看数据时一眼能懂。
+
+### 执行与验证
+
+```
+node scripts/db-apply.js db/schema.sql      # 建表（IF NOT EXISTS，重复执行不报错）
+node scripts/db-apply.js db/seed.sql        # 灌种子（词库 UPSERT + 记录先删 seed- 前缀再插）
+node scripts/db-snapshot.js                 # select 验证 + 生成打卡/db-snapshot.html 取证页
+```
+
+- 种子数据（重复执行不报错、结果一致）：words **12** 行｜learn_records **10** 行｜review_records **7** 行；
+  对应页面口径：今天已学 2｜昨天学过 4｜今天已复习 3｜累计已学 10｜还没学过 2。
+  故意留 2 个词没学，让「新单词学习」页还有卡可学（Day 17 联调要用）。
+- **记录表的日期用 `current_date - N` 相对今天算**，所以任何时候重跑种子，「昨天学过的词」都不会失效；
+  这也是它必须「先删 seed- 再插」的原因（只 DO NOTHING 的话日期会过期）。
+
+### 业务规则交给数据库兜底（已实测生效）
+
+| 规则 | 靠什么 | 违反时的实测报错 |
+| --- | --- | --- |
+| 同一天同一个词不重复计进度 | `unique (word, learned_date)` / `(word, reviewed_date)` | `SQLSTATE 23505 duplicate key value violates unique constraint` |
+| 不给词库里不存在的词记进度 | 外键 `references words(word)` | `SQLSTATE 23503 violates foreign key constraint` |
+
+> 接口层就算写错了也插不进脏数据 —— 这两条正是 PRD F2「不重复计进度」与异常表「重复词以第一次为准」。
