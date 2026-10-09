@@ -20,3 +20,6 @@ Thumbs.db
 
 # 打卡截图与本地留存（永不入库，惯例同 VibeCoding 项目）
 打卡/
+
+# 构建产物（由 scripts/sync-dist.js 生成，部署用，不入库）
+dist/

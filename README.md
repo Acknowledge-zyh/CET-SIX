@@ -63,3 +63,74 @@
 | `?demo=all` | 全部词标成今天已学，用于预览「今天的新词都学完啦」真实空态 |
 | `?view=records`（或旧参数 `?tab=review`） | 无 hash 时直接进入某视图 |
 | `?status=pending\|today\|earlier\|todo\|done` | 直接应用某个状态筛选（与 ?view= 组合使用） |
+
+## 部署到 CloudBase（公网）
+
+> 本环境与「今日热搜」(VibeCoding) **共用同一个免费 CloudBase 环境**（账号只有一个），
+> 所以本项目的**函数名、访问路径、托管目录都带 `cet6` 前缀**，与该项目互不干扰。
+
+| 用途 | 公网地址 |
+| --- | --- |
+| 前端页面 | `https://acknowledge-d9gnqrpy89f1f7d21-1493626656.tcloudbaseapp.com/cet6/` |
+| 健康检查接口 | `https://acknowledge-d9gnqrpy89f1f7d21.service.tcloudbase.com/cet6/api/health` |
+
+### A. 云函数 `/cet6/api/health` —— 从创建到公网访问
+
+1. **写代码**：`cloudfunctions/cet6-health/index.js`（**事件型**云函数 `exports.main`，返回 `{ ok, service }`）
+2. **登录 CLI**（首次，本机已登录、凭据在 `~/.cloudbase/auth.json`）：`tcb login`
+3. **部署 + 开通 HTTP 访问路径**（一条命令完成）：
+   ```
+   tcb fn deploy cet6-health -e acknowledge-d9gnqrpy89f1f7d21 --path /cet6/api/health --runtime Nodejs18.15 --force
+   ```
+4. **验证**：见 C。
+
+### B. 前端 —— 从构建到公网访问
+
+> 本项目是**纯静态**原生页面（不是 React），「构建」= 把静态文件同步进 `dist/`。
+
+1. **同步静态文件**：`node scripts/sync-dist.js`（把 `index.html / styles.css / app.js / data/` 复制进 `dist/`）
+2. **部署到 `/cet6/` 子路径**（**不要用 `--prune`**，否则会误删同环境其它项目的文件）：
+   ```
+   tcb hosting deploy dist /cet6/ -e acknowledge-d9gnqrpy89f1f7d21
+   ```
+3. **验证**：见 C。
+
+### C. 部署后怎么验证
+
+**云函数**：浏览器打开 `…/cet6/api/health` → 应看到**一段 JSON**（不是网页）：
+
+```json
+{ "ok": true, "service": "cet6-vocab" }
+```
+
+命令行等价验证：`curl https://…service.tcloudbase.com/cet6/api/health`
+
+**前端**：浏览器打开 `…/cet6/` → 应看到「📘 六级单词复习」页面
+（顶栏进度条 + 三个标签〔新单词学习／昨日单词复习／学习记录〕+ 词卡列表 + 右侧统计）；
+再开 `…/cet6/#/records` 应直达「学习记录」视图。
+
+### D. 每次改完代码的固定流程
+
+```
+node scripts/sync-dist.js                        # ① 同步进 dist/
+git add ... && git commit ...                    # ② 提交
+git push                                         # ③ 推送
+tcb hosting deploy dist /cet6/ -e acknowledge-d9gnqrpy89f1f7d21   # ④ 部署前端
+# 改了云函数再补一步：
+tcb fn deploy cet6-health -e acknowledge-d9gnqrpy89f1f7d21 --path /cet6/api/health   # ⑤
+```
+
+> **接口还没接**：页面目前仍读本地 `data/words.json`、记录存本机 localStorage（`cet6_learned_v1` / `cet6_reviewed_v1`），
+> **没有**调用任何接口；跨域（CORS）也**尚未配置**。
+
+### E. 实测踩过的坑（别再踩）
+
+1. `/cet6/api/health` 必须用**事件型云函数** + `--path`（**不要**加 `--httpFn`）；
+   `--httpFn` 是 Web 函数，它建的访问路径会报 `400 FUNCTIONS_PARAM_INVALID: FunctionType parameter is invalid`。
+2. `tcb hosting deploy dist /cet6/ --verify` 会**误报**「一致性校验失败：missing=/cet6/…」，
+   但 `tcb hosting list` 与实际访问 URL 都证明文件其实上传成功了 —— 以这两者为准（子路径部署的校验环节有此问题）。
+
+### F. 接口契约
+
+全部接口（1 实现 + 6 占位）与三张表（`words` / `learn_records` / `review_records`）设计见 **`api-contract.md`** ——
+那是第 3 周建表与写接口的唯一依据。

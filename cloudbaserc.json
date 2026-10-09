@@ -1,0 +1,15 @@
+{
+  "$schema": "https://raw.githubusercontent.com/Tencent/cloudbase-framework/master/packages/cloudbase-framework-registry/schema/cloudbaserc.json",
+  "_说明": "六级单词复习 · CloudBase 部署配置。本环境与「今日热搜」(VibeCoding) 共用（免费账号只有一个环境），所以函数名用 cet6-health、访问路径用 /cet6/api/health，与该项目的 health / /api/health 互不冲突。换环境只改 envId 一处。",
+  "envId": "acknowledge-d9gnqrpy89f1f7d21",
+  "functionRoot": "./cloudfunctions",
+  "region": "ap-shanghai",
+  "functions": [
+    {
+      "name": "cet6-health",
+      "timeout": 5,
+      "memorySize": 256,
+      "description": "/cet6/api/health 健康检查（事件型云函数，集成响应）：只返回 { ok, service }"
+    }
+  ]
+}
