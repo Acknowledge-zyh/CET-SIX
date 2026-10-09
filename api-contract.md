@@ -74,38 +74,69 @@
 
 页面当前把数据放在两处：词库 `data/words.json`（只读）、学习/复习记录存浏览器 localStorage
 （键 `cet6_learned_v1` / `cet6_reviewed_v1`，结构均为 `{ "单词": "YYYY-MM-DD" }`，见 PRD 6.2）。
-接后端后，**三张表**一一对应：
+接后端后，**三张表**一一对应。
+
+> **本节与数据库的一致性**
+> 下面每张表的「数据库列类型 / 约束」就是 `db/schema.sql` 里**实际建出来**的结构，
+> 已在环境 `acknowledge-d9gnqrpy89f1f7d21` 的 CloudBase PostgreSQL 17 上建成，
+> 并用 `db/verify.sql` select 验证过（表数据 + `information_schema` 里的约束）。
+> **改表结构 = 先改本节，再改 `db/schema.sql`，两边同步；不允许文档一套、库里另一套。**
 
 #### 表 1 `words` —— 词库（只读，由导入维护）
 
-| 字段 | 类型 | 必填 | 说明 |
-| --- | --- | --- | --- |
-| `id` | string | 是 | 主键，如 `w_abandon` |
-| `word` | string | 是 | 单词（唯一），如 `abandon` |
-| `phonetic` | string | 否 | 音标，如 `/əˈbændən/` |
-| `meaning` | string | 是 | 中文释义（含词性），如 `v. 放弃；抛弃` |
-| `created_at` | string(ISO) | 是 | 入库时间 |
+| 字段 | 数据库列类型 | 约束 | 必填 | 说明 |
+| --- | --- | --- | --- | --- |
+| `id` | `text` | **PK** | 是 | 主键，约定 `w_<单词>`，如 `w_abandon` |
+| `word` | `text` | **UNIQUE** + NOT NULL | 是 | 单词（全库唯一），另两张表的外键目标 |
+| `phonetic` | `text` | 可为 NULL | 否 | 音标，如 `/əˈbændən/` |
+| `meaning` | `text` | NOT NULL | 是 | 中文释义（含词性），如 `v. 放弃；抛弃` |
+| `created_at` | `timestamptz` | NOT NULL，default `now()` | 是 | 入库时间 |
 
 #### 表 2 `learn_records` —— 学习记录（对应 localStorage `cet6_learned_v1`）
 
-| 字段 | 类型 | 必填 | 说明 |
-| --- | --- | --- | --- |
-| `id` | string | 是 | 主键 |
-| `word` | string | 是 | 单词（对应 `words.word`） |
-| `learned_date` | string(YYYY-MM-DD) | 是 | 标记「学会了」的当天日期 |
-| `created_at` | string(ISO) | 是 | 入库时间 |
+| 字段 | 数据库列类型 | 约束 | 必填 | 说明 |
+| --- | --- | --- | --- | --- |
+| `id` | `text` | **PK** | 是 | 主键，如 `lr_01` |
+| `word` | `text` | **FK → `words.word`**（ON UPDATE CASCADE / ON DELETE CASCADE）+ NOT NULL | 是 | 单词 |
+| `learned_date` | `date` | NOT NULL | 是 | 标记「学会了」的当天日期 |
+| `created_at` | `timestamptz` | NOT NULL，default `now()` | 是 | 入库时间 |
+| — | — | **UNIQUE (`word`, `learned_date`)** | — | 同一天同一个词只能有一条 |
 
 #### 表 3 `review_records` —— 复习记录（对应 localStorage `cet6_reviewed_v1`）
 
-| 字段 | 类型 | 必填 | 说明 |
-| --- | --- | --- | --- |
-| `id` | string | 是 | 主键 |
-| `word` | string | 是 | 单词（对应 `words.word`） |
-| `reviewed_date` | string(YYYY-MM-DD) | 是 | 标记「想起来了」的当天日期 |
-| `created_at` | string(ISO) | 是 | 入库时间 |
+| 字段 | 数据库列类型 | 约束 | 必填 | 说明 |
+| --- | --- | --- | --- | --- |
+| `id` | `text` | **PK** | 是 | 主键，如 `rr_01` |
+| `word` | `text` | **FK → `words.word`**（ON UPDATE CASCADE / ON DELETE CASCADE）+ NOT NULL | 是 | 单词 |
+| `reviewed_date` | `date` | NOT NULL | 是 | 标记「想起来了」的当天日期 |
+| `created_at` | `timestamptz` | NOT NULL，default `now()` | 是 | 入库时间 |
+| — | — | **UNIQUE (`word`, `reviewed_date`)** | — | 同一天同一个词只能有一条 |
 
-> 唯一约束建议：`learn_records(word, learned_date)` 与 `review_records(word, reviewed_date)` 唯一 ——
-> 保证「同一天同一个词不重复计进度」（对齐 PRD F2「不重复计进度」与异常表「重复词以第一次为准」）。
+#### 约束与索引一览（与 `db/schema.sql` 一一对应）
+
+| 名称 | 类型 | 定义 | 为什么 |
+| --- | --- | --- | --- |
+| `words_pkey` | 主键 | `words(id)` | |
+| `words_word_key` | 唯一 | `words(word)` | 它是两张记录表的外键目标，必须唯一，否则关联有歧义 |
+| `learn_records_pkey` / `review_records_pkey` | 主键 | `(id)` | |
+| `learn_records_word_learned_date_key` | 唯一 | `(word, learned_date)` | 同一天同一个词不重复计进度（PRD F2 / 异常表） |
+| `review_records_word_reviewed_date_key` | 唯一 | `(word, reviewed_date)` | 同上 |
+| `learn_records_word_fkey` / `review_records_word_fkey` | 外键 | `word → words(word)` `on delete cascade` | 挡住「给词库里不存在的词记进度」 |
+| `idx_learn_records_learned_date` | 索引 | `(learned_date desc)` | 学习记录视图按日期倒序分组 |
+| `idx_review_records_reviewed_date` | 索引 | `(reviewed_date desc)` | 「今天已复习」按日期筛 |
+
+> 说明：`unique (word, learned_date)` 自带的复合索引已能支撑「按 word 查」与外键校验，
+> 所以**不再**单独给 `word` 建索引 —— 不提前造用不到的索引。
+
+#### 命名约定：数据库列名 ↔ 接口字段名
+
+接口 JSON 的字段名**与数据库列名保持一致（统一 `snake_case`）**：
+`learned_date` / `reviewed_date` / `created_at` 就是库里那几列，不额外改写成驼峰。
+时间字段库内存 `date` / `timestamptz`，出接口时按 1.3 的格式转成字符串
+（日期 `YYYY-MM-DD`，时间戳 UTC ISO 8601）。
+
+> 例外：`GET /cet6/api/stats` 里的 `todayLearned` 等是**算出来的聚合数字，不落任何列**，
+> 属于展示字段，保持驼峰读起来更顺，不算「与数据库不一致」。
 
 ---
 
@@ -199,7 +230,7 @@ curl https://acknowledge-d9gnqrpy89f1f7d21.service.tcloudbase.com/cet6/api/healt
 {
   "ok": true,
   "items": [
-    { "id": "lr_01", "word": "abandon", "learned_date": "2026-10-08", "createdAt": "2026-10-08T06:20:00.000Z" }
+    { "id": "lr_01", "word": "abandon", "learned_date": "2026-10-08", "created_at": "2026-10-08T06:20:00.000Z" }
   ],
   "total": 1
 }
@@ -243,7 +274,7 @@ curl https://acknowledge-d9gnqrpy89f1f7d21.service.tcloudbase.com/cet6/api/healt
 {
   "ok": true,
   "items": [
-    { "id": "rr_01", "word": "abundant", "reviewed_date": "2026-10-09", "createdAt": "2026-10-09T04:35:00.000Z" }
+    { "id": "rr_01", "word": "abundant", "reviewed_date": "2026-10-09", "created_at": "2026-10-09T04:35:00.000Z" }
   ],
   "total": 1
 }
@@ -342,3 +373,4 @@ curl https://acknowledge-d9gnqrpy89f1f7d21.service.tcloudbase.com/cet6/api/healt
 | --- | --- |
 | 2026-10-09 | 首版：登记 3 张表（`words` / `learn_records` / `review_records`）与 7 个接口（1 实现 + 6 占位）；因与环境内其它项目共用环境，路径统一加 `/cet6` 前缀 |
 | 2026-10-09（Day 16） | 三张表在 CloudBase PostgreSQL 建成（`db/schema.sql`），种子与 select 验证入库；外键与唯一约束实测生效；接口仍未实现，形状不变 |
+| 2026-10-09（Day 17） | **表结构回写**：1.5 节按 `db/schema.sql` 实际 DDL 逐列重写（补上真实列类型 `text`/`date`/`timestamptz`、主键/外键/唯一约束、索引一览），并新增「数据库列名 ↔ 接口字段名」命名约定；接口示例里的 `createdAt` 统一改为 `created_at`，与库列名一致；`db/verify.sql` 增加「约束一览」面板用于对账 |

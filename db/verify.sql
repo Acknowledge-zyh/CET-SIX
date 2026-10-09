@@ -1,7 +1,8 @@
 -- ============================================================================
 -- 六级单词复习 · 数据验证（verify.sql）
 -- ----------------------------------------------------------------------------
--- 用途：Day 16 的「select 验证」——每张核心表都 select 出至少 5 行，并核对业务口径。
+-- 用途：「select 验证」——每张核心表都 select 出至少 5 行，核对业务口径，
+--       并查一遍实际建出来的约束（主键 / 外键 / 唯一），与 api-contract.md 第 1.5 节逐条对账。
 -- 执行：node scripts/db-snapshot.js
 --       （逐条执行下面的语句，在终端打印结果，同时生成 打卡/db-snapshot.html 作为取证页）
 --
@@ -39,8 +40,24 @@ select
       (select 1 from learn_records lr where lr.word = w.word))               as "还没学过的词";
 
 
+-- @panel constraints | 约束一览 —— 主键 / 外键 / 唯一（对应 schema.sql 实际建出来的东西）
+select tc.table_name      as "表",
+       tc.constraint_type as "约束类型",
+       tc.constraint_name as "约束名",
+       kcu.column_name    as "涉及列",
+       kcu.ordinal_position as "列序号"
+from information_schema.table_constraints tc
+join information_schema.key_column_usage kcu
+  on kcu.constraint_schema = tc.constraint_schema
+ and kcu.constraint_name   = tc.constraint_name
+where tc.table_schema = 'public'
+  and tc.table_name in ('words', 'learn_records', 'review_records')
+order by tc.table_name, tc.constraint_type, tc.constraint_name, kcu.ordinal_position;
+
+
 -- @panel schema | 三张表的结构（字段名 / 类型 / 是否可空）
 select table_name, column_name, data_type, is_nullable
 from information_schema.columns
 where table_schema = 'public'
+  and table_name in ('words', 'learn_records', 'review_records')
 order by table_name, ordinal_position;

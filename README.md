@@ -141,10 +141,13 @@ tcb fn deploy cet6-health -e acknowledge-d9gnqrpy89f1f7d21 --path /cet6/api/heal
 全部接口（1 实现 + 6 占位）与三张表（`words` / `learn_records` / `review_records`）设计见 **`api-contract.md`** ——
 那是第 3 周建表与写接口的唯一依据。
 
-## 数据库（Day 16 建表）
+## 数据库（Day 16 建表 · Day 17 契约回写）
 
 > 数据库是 CloudBase **PostgreSQL 17**（Day 7 建环境时选的就是 PG 类型）。
-> 表结构以 `api-contract.md` 第 1.5 节为唯一依据，落到 `db/schema.sql`。
+> 表结构以 `api-contract.md` 第 1.5 节为唯一依据，落到 `db/schema.sql`；
+> 建好之后又**把实际的列类型 / 主键 / 外键 / 唯一约束 / 索引按 DDL 回写到 1.5 节**，
+> 两边现在逐列对齐（改结构就先改契约、再改 SQL，不许各写一套）。
+> 本环境与「今日热搜」共用，同一库里还有它的 `trends` / `favorites` 两张演示表，本项目只碰自己这三张。
 
 ### 两张核心表存什么、靠哪个字段关联
 
@@ -157,13 +160,71 @@ tcb fn deploy cet6-health -e acknowledge-d9gnqrpy89f1f7d21 --path /cet6/api/heal
 `learn_records.word → words.word`、`review_records.word → words.word`（外键，删词级联删记录）。
 选 `word` 而不是自增数字做外键：单词是天然唯一的业务标识，看数据时一眼能懂。
 
-### 执行与验证
+### 执行（两种方式，选一种即可）
+
+**方式一：命令行（推荐，一条命令一个文件）**
 
 ```
 node scripts/db-apply.js db/schema.sql      # 建表（IF NOT EXISTS，重复执行不报错）
 node scripts/db-apply.js db/seed.sql        # 灌种子（词库 UPSERT + 记录先删 seed- 前缀再插）
-node scripts/db-snapshot.js                 # select 验证 + 生成打卡/db-snapshot.html 取证页
+node scripts/db-apply.js db/schema.sql db/seed.sql   # 也可以一次传两个，按顺序执行
 ```
+（脚本等价于 `tcb db execute -e acknowledge-d9gnqrpy89f1f7d21 --sql "$(cat db/schema.sql)"`，
+只是把 SQL 直接当参数数组传给 CLI，不经 shell 拼串，中文和引号不会被转义搞坏。）
+
+**方式二：CloudBase 控制台（图形界面，不用装 CLI）**
+
+1. 浏览器打开云开发控制台 <https://tcb.cloud.tencent.com>（或腾讯云控制台 → 云开发），
+   在环境列表里选 **`acknowledge-d9gnqrpy89f1f7d21`**（上海，体验版）。
+2. 左侧选 **数据库** → 进入 **PostgreSQL** → 打开 **SQL 执行 / SQL 编辑器** 区。
+3. 用文本编辑器打开本仓库的 `db/schema.sql`，**全文复制**粘贴进去 → 点「执行」→ 期望提示执行成功。
+   （建表语句是 `create table if not exists`，重复执行也只会提示已存在，不会报错。）
+4. 再打开 `db/seed.sql`，同样全文复制粘贴 → 执行 → 期望成功。
+   脚本最后一条 `insert` 的「影响行数」应为 **7**（复习记录 7 行）。
+5. 左侧展开 `public` schema，应能看到三张表 `words` / `learn_records` / `review_records`，
+   点进去「数据」页分别看到 **12 / 10 / 7** 行。
+
+> 控制台菜单名各版本略有差异，认准「数据库 → PostgreSQL → SQL 执行」这条路径即可。
+
+### select 验证（怎么确认建对了）
+
+**命令行一键版**：
+
+```
+node scripts/db-snapshot.js     # 逐条跑 db/verify.sql，终端打印结果，并生成 打卡/db-snapshot.html 取证页
+```
+
+**控制台手工版**：在 SQL 编辑区依次执行下面几条，对照期望结果。
+
+```sql
+-- ① 每张核心表都能 select 出数据（至少 5 行）
+select id, word, phonetic, meaning, created_at from words order by word;                     -- 期望 12 行
+select id, word, learned_date, created_at  from learn_records  order by learned_date desc;   -- 期望 10 行
+select id, word, reviewed_date, created_at from review_records order by reviewed_date desc;  -- 期望  7 行
+
+-- ② 业务口径自检（页面上那几个数字从哪来）
+select
+  (select count(*) from words)                                              as "词库总数",
+  (select count(*) from learn_records  where learned_date  = current_date)   as "今天已学",
+  (select count(*) from learn_records  where learned_date  = current_date-1) as "昨天学过",
+  (select count(*) from review_records where reviewed_date = current_date)   as "今天已复习",
+  (select count(distinct word) from learn_records)                           as "累计已学",
+  (select count(*) from words w where not exists
+      (select 1 from learn_records lr where lr.word = w.word))               as "还没学过的词";
+-- 期望：12 | 2 | 4 | 3 | 10 | 2
+
+-- ③ 约束真的建上了（与 api-contract.md 1.5 的约束一览逐条对账）
+select tc.table_name, tc.constraint_type, tc.constraint_name, kcu.column_name
+from information_schema.table_constraints tc
+join information_schema.key_column_usage kcu
+  on kcu.constraint_schema = tc.constraint_schema and kcu.constraint_name = tc.constraint_name
+where tc.table_schema = 'public'
+  and tc.table_name in ('words','learn_records','review_records')
+order by tc.table_name, tc.constraint_type, kcu.ordinal_position;
+-- 期望看到 PRIMARY KEY ×3、FOREIGN KEY ×2（都指向 words.word）、UNIQUE ×3（words.word + 两张记录表的 (word, 日期)）
+```
+
+期望结果汇总：
 
 - 种子数据（重复执行不报错、结果一致）：words **12** 行｜learn_records **10** 行｜review_records **7** 行；
   对应页面口径：今天已学 2｜昨天学过 4｜今天已复习 3｜累计已学 10｜还没学过 2。
